@@ -1,15 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
-
-hidden_imports = ['win32com', 'win32com.client', 'win32api', 'win32con', 'pywintypes'] + collect_submodules('win32com')
-datas_collected = collect_data_files('win32com')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=datas_collected,
-    hiddenimports=hidden_imports,
+    datas=[],
+    hiddenimports=['olefile'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
