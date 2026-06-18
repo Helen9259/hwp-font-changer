@@ -9,11 +9,10 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    
-    # 깃허브 릴리즈 업로드 권한 설정 (정확한 들여쓰기 반영)
+
+    # 깃허브가 허용하는 올바른 권한 명시 (들여쓰기 정렬 완료)
     permissions:
       contents: write
-      releases: write
 
     steps:
       - name: 코드 체크아웃
