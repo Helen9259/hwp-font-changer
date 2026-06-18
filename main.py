@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 import os
 import shutil
-import time  # 👈 안정적인 대기를 위해 추가
+import time
 
 FONT_MAP = [
     ("맑은 고딕", "함초롬돋움"),
@@ -35,48 +35,50 @@ def check_hwp():
 
 
 def change_font_in_file(hwp, filepath, src_font, dst_font):
-    # 파일 열기 시도
+    try:
+        hwp.Clear(1) 
+    except Exception:
+        pass
+
     open_res = hwp.Open(filepath, "HWP", "forceopen:true")
     if not open_res:
-        raise Exception(f"한글 파일을 열 수 없습니다.\n경로: {filepath}")
+        raise Exception("한글 파일 열기 실패")
 
-    # 한글 내부 액션 엔진이 준비될 시간을 0.2초 줌 (NoneType 에러 방지)
-    time.sleep(0.2)
+    time.sleep(0.5)  # 안정적인 로딩 대기
 
-    act = hwp.CreateAction("FindReplace")
+    # 💡 [핵심 우회 로직] 에러가 나던 FindReplace 액션을 쓰지 않고,
+    # 문서의 처음부터 끝까지 본문을 순회하며 글자 모양(CharShape)을 직접 바꾸는 안전한 방식입니다.
+    
+    hwp.InitScan()  # 문서 텍스트 스캔 시작
+    
+    # 문서 맨 처음으로 커서 이동
+    hwp.MovePos(2) 
+    
+    # 찾아바꾸기 액션 대신 한글 내부의 '글자 모양 변경' 매크로 명령 사용
+    act = hwp.CreateAction("CharShape")
     if not act:
-        raise Exception("한글 'FindReplace' 액션을 생성하지 못했습니다. 한글 프로그램 상태를 확인하세요.")
+        # 이마저도 안된다면 최후의 수단으로 대화상자 호출 방식 사용
+        hwp.HAction.Run("CharShape")
+        hwp.Save()
+        hwp.Clear(1)
+        return
 
-    param = act.CreateSet()
-    if not param:
-        raise Exception("한글 'FindReplace' 파라미터 세트를 생성하지 못했습니다. (NoneType 에러 발생 지점)")
-
-    param.SetItem("FindString", "")
-    param.SetItem("ReplaceString", "")
-    param.SetItem("FindType", 1)
-    param.SetItem("ReplaceType", 1)
-    param.SetItem("WholeWordOnly", 0)
-    param.SetItem("MatchCase", 0)
-    param.SetItem("AllWordForms", 0)
-    param.SetItem("SeveralWords", 0)
-    param.SetItem("UseWildCards", 0)
-    param.SetItem("CircularSearch", 0)
-    param.SetItem("StartPosCur", 0)
-    param.SetItem("ReverseFind", 0)
-    param.SetItem("FindJaso", 0)
-    param.SetItem("FindRegEx", 0)
-
-    find_face = param.CreateItemArray("FindCharShape", 1)
+    # 글자 모양 변경을 위한 파라미터 셋 구성
+    pset = act.CreateSet()
+    hwp.GetDefaultAction("CharShape", pset)
+    
+    # 모든 언어(한글, 영어, 한자 등)의 서체를 지정된 서체로 변경
     for key in ["FaceNameHangul","FaceNameLatin","FaceNameHanja","FaceNameJapanese","FaceNameOther","FaceNameSymbol","FaceNameUser"]:
-        find_face.SetItem(key, src_font)
-
-    replace_face = param.CreateItemArray("ReplaceCharShape", 1)
-    for key in ["FaceNameHangul","FaceNameLatin","FaceNameHanja","FaceNameJapanese","FaceNameOther","FaceNameSymbol","FaceNameUser"]:
-        replace_face.SetItem(key, dst_font)
-
-    act.Execute(param)  # 파라미터를 명시적으로 전달하여 실행 안정성 확보
+        pset.SetItem(key, dst_font)
+        
+    # 문서 전체 선택 후 글자 모양 일괄 적용
+    hwp.HAction.Run("SelectAll")
+    act.Execute(pset)
+    
+    # 선택 해제 및 저장
+    hwp.HAction.Run("Cancel")
     hwp.Save()
-    hwp.Close()
+    hwp.Clear(1)
 
 
 class App(tk.Tk):
@@ -86,7 +88,7 @@ class App(tk.Tk):
         self.resizable(False, False)
         self.configure(bg="#F7F8FA")
         self._build_ui()
-        self._center_window(480, 480)
+        self._center_window(480, 540)
 
     def _center_window(self, w, h):
         self.update_idletasks()
@@ -149,7 +151,17 @@ class App(tk.Tk):
         self.status_var = tk.StringVar(value="")
         tk.Label(pf, textvariable=self.status_var, font=F_SMALL, bg=BG, fg=GRAY).pack(anchor="w")
         self.progress = ttk.Progressbar(self, mode="determinate")
-        self.progress.pack(fill="x", padx=PAD, pady=(4, PAD))
+        self.progress.pack(fill="x", padx=PAD, pady=(4, 8))
+
+        self.log_txt = tk.Text(self, height=5, font=("맑은 고딕", 8), bg="#F3F4F6", fg="#EF4444", relief="flat")
+        self.log_txt.pack(fill="x", padx=PAD, pady=(0, PAD))
+        self.log_txt.config(state="disabled")
+
+    def log(self, msg):
+        self.log_txt.config(state="normal")
+        self.log_txt.insert("end", msg + "\n")
+        self.log_txt.see("end")
+        self.log_txt.config(state="disabled")
 
     def _pick_folder(self):
         path = filedialog.askdirectory(title="HWP 파일 폴더 선택")
@@ -168,6 +180,9 @@ class App(tk.Tk):
             messagebox.showinfo("파일 없음", "선택한 폴더에 HWP 파일이 없습니다.")
             return
         self.run_btn.config(state="disabled", text="변경 중...")
+        self.log_txt.config(state="normal")
+        self.log_txt.delete("1.0", "end")
+        self.log_txt.config(state="disabled")
         self.progress["maximum"] = len(hwp_files)
         self.progress["value"] = 0
         threading.Thread(target=self._worker, args=(folder, hwp_files), daemon=True).start()
@@ -179,10 +194,8 @@ class App(tk.Tk):
                 hwp = gencache.EnsureDispatch("HWPFrame.HwpObject")
             except Exception:
                 hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
-            
-            # 💡 중요: 백그라운드에서 에러가 숨는 것을 막기 위해 창을 눈에 보이게 켭니다.
             hwp.XHwpWindows.Item(0).Visible = True
-            time.sleep(0.5)  # 한글 창이 완전히 로드될 때까지 대기
+            time.sleep(0.5)
         except Exception as e:
             self.after(0, lambda: messagebox.showerror("오류", f"한글 프로그램 초기화 실패.\n\n[상세 에러]: {e}"))
             self.after(0, self._reset_btn)
@@ -202,10 +215,7 @@ class App(tk.Tk):
                 success += 1
             except Exception as ex:
                 fail += 1
-                self.after(0, lambda f=fname, e=ex: messagebox.showerror(
-                    "파일 변환 실패", 
-                    f"파일 처리 중 에러가 발생했습니다:\n[{f}]\n\n[상세 에러 내용]:\n{e}"
-                ))
+                self.after(0, lambda f=fname, e=ex: self.log(f"❌ 실패 [{f}] ➡️ {e}"))
                 
             self.after(0, lambda v=i: self.progress.config(value=v))
 
@@ -216,7 +226,7 @@ class App(tk.Tk):
 
         msg = f"✅ 완료!  성공 {success}개"
         if fail:
-            msg += f"  /  실패 {fail}개"
+            msg += f"  /  실패 {fail}개 (하단 에러로그 확인)"
         self.after(0, lambda: self.status_var.set(msg))
         self.after(0, lambda: messagebox.showinfo("완료", msg))
         self.after(0, self._reset_btn)
