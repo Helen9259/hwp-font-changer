@@ -1,0 +1,47 @@
+name: Build EXE
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 의존성 설치
+        run: |
+          pip install pyinstaller pywin32
+
+      - name: EXE 빌드
+        run: |
+          pyinstaller hwp_font_changer.spec
+
+      - name: GitHub Release 업로드
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/HWP_Font_Changer.exe
+          name: "HWP 서체 변경 ${{ github.ref_name }}"
+          body: |
+            ## HWP 서체 일괄 변경 프로그램
+
+            ### 사용 방법
+            1. `HWP서체변경.exe` 다운로드
+            2. 한컴 한글이 설치된 Windows PC에서 실행
+            3. 폴더 선택 → 찾을 서체 / 바꿀 서체 입력 → 시작
+
+            ### 시스템 요구사항
+            - Windows 10/11
+            - 한컴 한글(HWP) 설치 필수
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
