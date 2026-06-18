@@ -21,21 +21,30 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          pip install pyinstaller pywin32
+          pip install pyinstaller olefile
 
       - name: EXE 빌드
         run: |
-          pyinstaller --clean hwp_font_changer.spec
+          pyinstaller hwp_font_changer.spec
 
       - name: GitHub Release 업로드
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: dist/HWP_Font_Changer.exe
-          tag_name: ${{ github.ref_name }}
           name: "HWP 서체 변경 ${{ github.ref_name }}"
           body: |
             ## HWP 서체 일괄 변경 프로그램
-            - 한글 백그라운드 Visible 해제 및 특정 서체 변환 기능 롤백 버전
+
+            ### 변환 내용
+            - 맑은 고딕 → 함초롬돋움
+            - 바탕 → 함초롬바탕
+
+            ### 사용 방법
+            1. HWP_Font_Changer.exe 다운로드 후 실행
+            2. 폴더 선택 → 서체 일괄 변경 시작
+            
+            ### 시스템 요구사항
+            - Windows 10/11
+            - 한글 프로그램 설치 불필요 ✅
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
