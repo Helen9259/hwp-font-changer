@@ -68,7 +68,7 @@ class App(tk.Tk):
         self.resizable(False, False)
         self.configure(bg="#F7F8FA")
         self._build_ui()
-        self._center_window(480, 420)
+        self._center_window(480, 480)
 
     def _center_window(self, w, h):
         self.update_idletasks()
