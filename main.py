@@ -6,7 +6,7 @@ import shutil
 
 FONT_MAP = [
     ("맑은 고딕", "함초롬돋움"),
-    ("바탕",      "함초롱바탕"),
+    ("바탕",      "함초롬바탕"),
 ]
 
 try:
@@ -68,7 +68,7 @@ class App(tk.Tk):
         self.resizable(False, False)
         self.configure(bg="#F7F8FA")
         self._build_ui()
-        self._center_window(480, 360)
+        self._center_window(480, 420)
 
     def _center_window(self, w, h):
         self.update_idletasks()
