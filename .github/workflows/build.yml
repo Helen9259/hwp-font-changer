@@ -1,47 +1,52 @@
-name: Build EXE
+[cite_start]name: Build EXE [cite: 1]
 
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - [cite_start]'v*' [cite: 1]
+  [cite_start]workflow_dispatch: [cite: 1]
 
 jobs:
   build:
-    runs-on: windows-latest
+    [cite_start]runs-on: windows-latest [cite: 1]
+    
+    # 👇 깃허브 액션 봇에게 저장소 및 릴리즈 쓰기 권한을 명시적으로 부여합니다. 
+    permissions:
+      [cite_start]contents: write [cite: 1]
+      [cite_start]releases: write [cite: 1]
 
     steps:
-      - name: 코드 체크아웃
-        uses: actions/checkout@v4
+      - [cite_start]name: 코드 체크아웃 [cite: 1]
+        [cite_start]uses: actions/checkout@v4 [cite: 1]
 
-      - name: Python 설치
-        uses: actions/setup-python@v5
+      - [cite_start]name: Python 설치 [cite: 1]
+        [cite_start]uses: actions/setup-python@v5 [cite: 1]
         with:
-          python-version: '3.11'
+          [cite_start]python-version: '3.11' [cite: 1]
 
-      - name: 의존성 설치
+      - [cite_start]name: 의존성 설치 [cite: 1]
         run: |
-          pip install pyinstaller pywin32
+          pip install pyinstaller pywin32 
 
-      - name: EXE 빌드
+      - [cite_start]name: EXE 빌드 [cite: 1]
         run: |
-          pyinstaller hwp_font_changer.spec
+          pyinstaller hwp_font_changer.spec 
 
-      - name: GitHub Release 업로드
-        uses: softprops/action-gh-release@v2
+      - [cite_start]name: GitHub Release 업로드 [cite: 1]
+        [cite_start]uses: softprops/action-gh-release@v2 [cite: 1]
         with:
-          files: dist/HWP_Font_Changer.exe
-          name: "HWP 서체 변경 ${{ github.ref_name }}"
+          [cite_start]files: dist/HWP_Font_Changer.exe [cite: 1]
+          [cite_start]name: "HWP 서체 변경 ${{ github.ref_name }}" [cite: 1]
           body: |
-            ## HWP 서체 일괄 변경 프로그램
+            ## HWP 서체 일괄 변경 프로그램 
 
-            ### 사용 방법
-            1. `HWP서체변경.exe` 다운로드
-            2. 한컴 한글이 설치된 Windows PC에서 실행
-            3. 폴더 선택 → 찾을 서체 / 바꿀 서체 입력 → 시작
+            ### 사용 방법 
+            1. [cite_start]`HWP_Font_Changer.exe` 다운로드 [cite: 1]
+            2. [cite_start]한컴 한글이 설치된 Windows PC에서 실행 [cite: 1]
+            3. [cite_start]폴더 선택 → 서체 일괄 변경 시작 [cite: 1]
 
-            ### 시스템 요구사항
-            - Windows 10/11
-            - 한컴 한글(HWP) 설치 필수
+            ### 시스템 요구사항 
+            - [cite_start]Windows 10/11 [cite: 1]
+            - [cite_start]한컴 한글(HWP) 설치 필수 [cite: 1]
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          [cite_start]GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} [cite: 1]
