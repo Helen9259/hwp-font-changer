@@ -11,6 +11,15 @@ try:
 except ImportError:
     HWP_AVAILABLE = False
 
+import logging
+LOG_PATH = os.path.join(os.path.expanduser("~"), "Desktop", "hwp_log.txt")
+logging.basicConfig(
+    filename=LOG_PATH,
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    encoding="utf-8"
+)
+
 # 고정 폰트 매핑
 FONT_MAP = [
     ("맑은 고딕", "함초롬돋움"),
@@ -211,6 +220,7 @@ class App(tk.Tk):
         # 한글 실행
         hwp = get_hwp()
         if hwp is None:
+            logging.error("한글 COM 인스턴스 생성 실패")
             self.after(0, lambda: messagebox.showerror(
                 "한글 없음",
                 "한컴 한글(HWP)을 찾을 수 없습니다.\n"
@@ -218,11 +228,13 @@ class App(tk.Tk):
             self.after(0, self._reset_btn)
             return
 
+        logging.info(f"한글 실행 성공")
+
         # 한글 창 숨기기
         try:
             hwp.XHwpWindows.Item(0).Visible = False
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning(f"창 숨기기 실패(무시): {e}")
 
         success, fail, fail_list = 0, 0, []
 
@@ -233,12 +245,14 @@ class App(tk.Tk):
             try:
                 if self.backup_var.get():
                     shutil.copy2(fpath, fpath + ".bak")
+                logging.info(f"처리 시작: {fpath}")
                 process_file(hwp, fpath)
+                logging.info(f"처리 성공: {fname}")
                 success += 1
             except Exception as ex:
                 fail += 1
                 fail_list.append(fname)
-                print(f"[실패] {fname}: {ex}")
+                logging.error(f"처리 실패: {fname} → {ex}", exc_info=True)
             self.after(0, lambda v=i: self.progress.config(value=v))
 
         try:
