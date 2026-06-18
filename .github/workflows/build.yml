@@ -21,7 +21,7 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          pip install pyinstaller olefile
+          pip install pyinstaller pywin32 olefile
 
       - name: EXE 빌드
         run: |
