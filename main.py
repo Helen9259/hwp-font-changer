@@ -11,7 +11,6 @@ FONT_MAP = [
 
 try:
     import win32com.client
-    import win32com.client.gencache as gencache
     HWP_AVAILABLE = True
 except ImportError:
     HWP_AVAILABLE = False
@@ -22,19 +21,20 @@ def check_hwp():
         messagebox.showerror("오류", "pywin32가 설치되어 있지 않습니다.\npip install pywin32 명령어로 설치해주세요.")
         return False
     try:
-        try:
-            hwp = gencache.EnsureDispatch("HWPFrame.HwpObject")
-        except Exception:
-            hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
+        hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
         hwp.Quit()
         return True
-    except Exception:
-        messagebox.showerror("한글 프로그램 없음", "한컴 한글(HWP)이 설치되어 있지 않습니다.\n한글 프로그램 설치 후 다시 실행해주세요.")
+    except Exception as e:
+        messagebox.showerror("한글 프로그램 없음", f"한컴 한글(HWP) 연동 실패.\n\n[상세 에러]: {e}")
         return False
 
 
 def change_font_in_file(hwp, filepath, src_font, dst_font):
-    hwp.Open(filepath, "HWP", "forceopen:true")
+    # 파일 열기 시도
+    open_res = hwp.Open(filepath, "HWP", "forceopen:true")
+    if not open_res:
+        raise Exception(f"한글 파일을 열 수 없습니다. (경로가 올바른지, 파일이 손상되지 않았는지 확인하세요)\n경로: {filepath}")
+
     act = hwp.CreateAction("FindReplace")
     param = act.CreateSet()
     param.SetItem("FindString", "")
@@ -161,13 +161,10 @@ class App(tk.Tk):
     def _worker(self, folder, files):
         success, fail = 0, 0
         try:
-            try:
-                hwp = gencache.EnsureDispatch("HWPFrame.HwpObject")
-            except Exception:
-                hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
+            hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
             hwp.XHwpWindows.Item(0).Visible = False
         except Exception as e:
-            self.after(0, lambda: messagebox.showerror("오류", f"한글 실행 실패: {e}"))
+            self.after(0, lambda: messagebox.showerror("오류", f"한글 프로그램 초기화 실패.\n\n[상세 에러]: {e}"))
             self.after(0, self._reset_btn)
             return
 
@@ -178,12 +175,20 @@ class App(tk.Tk):
             try:
                 if self.backup_var.get():
                     shutil.copy2(fpath, fpath + ".bak")
+                
+                # 절대 경로로 안전하게 변환하여 제어
+                abs_path = os.path.abspath(fpath)
                 for src_font, dst_font in FONT_MAP:
-                    change_font_in_file(hwp, os.path.abspath(fpath), src_font, dst_font)
+                    change_font_in_file(hwp, abs_path, src_font, dst_font)
                 success += 1
             except Exception as ex:
-                print(f"[실패] {fname}: {ex}")
+                # 🛠️ 실패한 파일 발견 시, 스킵하지 않고 에러 팝업창을 즉시 띄웁니다.
                 fail += 1
+                self.after(0, lambda f=fname, e=ex: messagebox.showerror(
+                    "파일 변환 실패", 
+                    f"파일 처리 중 에러가 발생했습니다:\n[{f}]\n\n[상세 에러 내용]:\n{e}"
+                ))
+                
             self.after(0, lambda v=i: self.progress.config(value=v))
 
         try:
